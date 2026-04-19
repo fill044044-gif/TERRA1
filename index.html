@@ -1,0 +1,616 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TERRA — Проектирование сада с ИИ и звуками природы</title>
+    <style>
+        /* ------------------- СТИЛИ (полная копия из предыдущего ответа) ------------------- */
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Cormorant+SC:wght@300;400;500&family=Onest:wght@300;400;500&display=swap');
+        *{margin:0;padding:0;box-sizing:border-box;}
+        :root{
+          --ink:#060e0a;--ink2:#0d1610;--ink3:#141e12;--ink4:#1a2618;
+          --gold:#c9a84c;--gold2:#b8942e;--gold3:rgba(201,168,76,.22);--gold4:rgba(201,168,76,.07);
+          --sage:#6b8f6a;--sage2:#4d6b4c;--sage3:rgba(107,143,106,.15);
+          --cream:#e8e0d0;--cream2:#c8bfa8;--cream3:#8a8070;--cream4:#4a4438;
+          --border:rgba(201,168,76,.1);--border2:rgba(201,168,76,.2);
+          --red:rgba(192,96,80,.9);
+        }
+        body{background:var(--ink);color:var(--cream);font-family:'Onest',sans-serif;font-weight:300;}
+
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+        @keyframes plantDrop{0%{transform:translate(-50%,-50%) scale(0) rotate(-8deg);opacity:0}65%{transform:translate(-50%,-50%) scale(1.12) rotate(2deg);opacity:1}100%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}}
+        @keyframes slideRight{from{transform:translateX(-16px);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes checkPop{0%{transform:scale(0)}70%{transform:scale(1.3)}100%{transform:scale(1)}}
+        @keyframes clickRing{0%{transform:translate(-50%,-50%) scale(.3);opacity:.9}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
+        @keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0)}50%{box-shadow:0 0 0 5px rgba(201,168,76,.1)}}
+        @keyframes waveBar{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+        @keyframes shimmer{0%{left:-100%}100%{left:200%}}
+        @keyframes breathe{0%,100%{opacity:.4}50%{opacity:.8}}
+
+        .scene{display:none;}
+        .scene.active{display:block;animation:fadeIn .35s ease both;}
+
+        .shell{width:100%;max-width:680px;margin:0 auto;background:var(--ink);border-radius:16px;overflow:hidden;border:1px solid var(--border2);}
+
+        .player-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--ink2);border-bottom:1px solid var(--border);}
+        .terra-globe{width:22px;height:22px;flex-shrink:0;}
+        .terra-name{font-family:'Cormorant SC',serif;font-size:14px;font-weight:400;color:var(--cream);letter-spacing:.12em;}
+        .scene-lbl{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:12px;color:var(--cream3);margin-left:4px;}
+        .prog-track{flex:1;height:2px;background:var(--ink4);border-radius:1px;}
+        .prog-fill{height:100%;background:var(--gold);border-radius:1px;transition:width .4s ease;}
+        .sdots{display:flex;gap:4px;}
+        .sdot{width:6px;height:6px;border-radius:50%;background:var(--ink4);cursor:pointer;transition:all .25s;}
+        .sdot.done{background:var(--gold2);}
+        .sdot.active{background:var(--gold);transform:scale(1.3);}
+
+        .audio-bar{
+          display:flex;align-items:center;gap:8px;
+          padding:7px 16px;
+          background:rgba(201,168,76,.04);
+          border-bottom:1px solid var(--border);
+        }
+        .audio-toggle{
+          display:flex;align-items:center;gap:6px;
+          padding:4px 10px;border-radius:20px;
+          border:1px solid var(--border2);background:transparent;
+          color:var(--cream3);font-family:'Onest',sans-serif;font-size:11px;font-weight:300;
+          cursor:pointer;transition:all .14s;
+        }
+        .audio-toggle:hover{background:var(--ink3);color:var(--cream);}
+        .audio-toggle.on{background:var(--gold4);border-color:rgba(201,168,76,.4);color:var(--gold);}
+        .audio-toggle svg{width:12px;height:12px;}
+        .wave-viz{display:flex;align-items:center;gap:2px;height:16px;}
+        .wbar{width:2px;border-radius:1px;background:var(--gold);transform-origin:center;}
+        .wbar.playing{animation:waveBar var(--d,.6s) ease-in-out infinite;}
+        .wbar:nth-child(1){--d:.5s;height:4px;}
+        .wbar:nth-child(2){--d:.7s;height:8px;animation-delay:.1s;}
+        .wbar:nth-child(3){--d:.55s;height:12px;animation-delay:.05s;}
+        .wbar:nth-child(4){--d:.65s;height:9px;animation-delay:.15s;}
+        .wbar:nth-child(5){--d:.5s;height:6px;animation-delay:.08s;}
+        .wbar:nth-child(6){--d:.7s;height:10px;animation-delay:.2s;}
+        .wbar:nth-child(7){--d:.6s;height:5px;animation-delay:.03s;}
+        .audio-label{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:11px;color:var(--cream4);}
+        .volume-wrap{display:flex;align-items:center;gap:6px;margin-left:auto;}
+        .volume-wrap svg{width:12px;height:12px;color:var(--cream4);}
+        .volume-wrap input[type=range]{width:70px;accent-color:var(--gold);}
+
+        .stage{position:relative;height:340px;overflow:hidden;background:var(--ink);}
+
+        .ui-topbar{height:36px;background:var(--ink2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;}
+        .ui-logo{font-family:'Cormorant SC',serif;font-size:12px;color:var(--cream);letter-spacing:.12em;}
+        .ui-logo em{color:var(--gold);font-style:italic;}
+        .ui-btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border2);font-size:9px;color:var(--cream3);background:transparent;font-family:'Onest',sans-serif;white-space:nowrap;}
+        .ui-btn-g{background:var(--gold4);border-color:rgba(201,168,76,.35);color:var(--gold);}
+        .uiml{margin-left:auto;display:flex;gap:4px;}
+
+        .plot-mini{position:absolute;border:1.5px solid rgba(107,143,106,.4);border-radius:3px;background:rgba(26,38,24,.35);}
+        .zone-m{position:absolute;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:7px;font-family:'Cormorant Garamond',serif;font-style:italic;}
+        .plant-chip{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:var(--ink3);border:1px solid rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;font-size:12px;}
+        .plant-lbl{position:absolute;top:105%;left:50%;transform:translateX(-50%);font-size:7px;font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--cream4);white-space:nowrap;}
+        .cursor-el{position:absolute;width:14px;height:14px;pointer-events:none;z-index:50;}
+        .cursor-el svg{width:14px;height:14px;}
+        .click-ring-el{position:absolute;width:18px;height:18px;border:1.5px solid var(--gold);border-radius:50%;pointer-events:none;z-index:49;opacity:0;}
+        .tooltip-b{position:absolute;background:var(--ink3);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;font-size:10px;color:var(--cream2);font-family:'Onest',sans-serif;font-weight:300;white-space:nowrap;z-index:60;pointer-events:none;}
+        .tooltip-b::after{content:'';position:absolute;bottom:-4px;left:12px;width:7px;height:7px;background:var(--ink3);border-right:1px solid var(--border2);border-bottom:1px solid var(--border2);transform:rotate(45deg);}
+        .h-ring{position:absolute;border-radius:50%;border:1.5px solid var(--gold);pointer-events:none;animation:glowPulse 2s ease-in-out infinite;}
+        .al{border-radius:4px;padding:5px 8px;font-size:10px;font-family:'Onest',sans-serif;font-weight:300;line-height:1.4;margin-top:5px;}
+        .al-g{background:rgba(107,143,106,.1);border-left:2px solid var(--sage);color:var(--cream3);}
+        .al-a{background:rgba(201,168,76,.06);border-left:2px solid rgba(201,168,76,.5);color:var(--cream3);}
+        .al-r{background:rgba(192,96,80,.08);border-left:2px solid rgba(192,96,80,.7);color:var(--cream3);}
+        .pr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);}
+        .pr:last-child{border-bottom:none;}
+        .pk{font-size:9px;color:var(--cream4);}
+        .pv{font-size:9px;color:var(--cream2);font-weight:400;}
+        .shimmer{position:absolute;top:0;bottom:0;width:36px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.05),transparent);animation:shimmer 1.8s ease-in-out infinite;}
+
+        .controls-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--ink2);border-top:1px solid var(--border);}
+        .cbtn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--cream3);font-family:'Onest',sans-serif;font-size:11px;font-weight:300;cursor:pointer;transition:all .14s;}
+        .cbtn:hover{background:var(--ink3);color:var(--cream);border-color:rgba(201,168,76,.3);}
+        .cbtn.primary{background:var(--gold4);border-color:var(--gold2);color:var(--gold);}
+        .cbtn.primary:hover{background:rgba(201,168,76,.14);}
+        .cbtn svg{width:12px;height:12px;flex-shrink:0;}
+        .cstep{font-family:'Cormorant Garamond',serif;font-size:11px;font-style:italic;color:var(--cream3);}
+        .cauto{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--cream4);margin-top:2px;justify-content:center;}
+        .adot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:pulse 1.4s ease-in-out infinite;}
+
+        .caption{padding:12px 18px;background:var(--ink2);border-top:1px solid var(--border);min-height:68px;}
+        .cap-step{font-family:'Cormorant SC',serif;font-size:8px;letter-spacing:.2em;color:var(--gold);margin-bottom:4px;}
+        .cap-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:400;color:var(--cream);line-height:1.2;margin-bottom:2px;}
+        .cap-body{font-size:11px;font-weight:300;color:var(--cream3);line-height:1.6;}
+
+        .spec-tbl{width:100%;border-collapse:collapse;font-size:9px;}
+        .spec-tbl th{text-align:left;padding:5px 10px;font-family:'Cormorant SC',serif;font-size:7px;letter-spacing:.14em;color:var(--cream4);border-bottom:1px solid var(--border);font-weight:400;}
+        .spec-tbl td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--cream2);}
+        .spec-tbl tr:last-child td{border-bottom:none;}
+    </style>
+</head>
+<body>
+<div class="shell">
+
+    <div class="player-topbar">
+        <svg class="terra-globe" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="11" r="9.5" stroke="rgba(201,168,76,.4)" stroke-width=".7"/>
+            <ellipse cx="11" cy="11" rx="4" ry="9.5" stroke="rgba(201,168,76,.28)" stroke-width=".7"/>
+            <line x1="1.5" y1="11" x2="20.5" y2="11" stroke="rgba(201,168,76,.28)" stroke-width=".7"/>
+            <path d="M3 7 Q11 5 19 7" stroke="rgba(201,168,76,.6)" stroke-width=".85" fill="none"/>
+            <path d="M3 15 Q11 17 19 15" stroke="rgba(201,168,76,.3)" stroke-width=".7" fill="none"/>
+            <circle cx="11" cy="11" r="1.8" fill="rgba(201,168,76,.65)"/>
+        </svg>
+        <span class="terra-name">TERRA</span>
+        <span class="scene-lbl" id="slbl">Добро пожаловать</span>
+        <div class="prog-track"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+        <div class="sdots" id="sdots"></div>
+    </div>
+
+    <div class="audio-bar">
+        <button class="audio-toggle" id="audio-toggle">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 5H5L9 2v10L5 9H2V5z"/><path id="vol-lines" d="M10.5 4.5a3 3 0 010 5M11.8 3a5 5 0 010 8" opacity=".6"/></svg>
+            Звук выкл.
+        </button>
+        <div class="wave-viz" id="wave">
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+            <div class="wbar"></div>
+        </div>
+        <span class="audio-label" id="audio-lbl">Нажмите для включения звука</span>
+        <div class="volume-wrap">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 5H5L9 2v10L5 9H2V5z"/></svg>
+            <input type="range" min="0" max="100" value="60" id="vol-slider" style="width:60px;"/>
+        </div>
+    </div>
+
+    <div class="stage" id="stage">
+
+        <!-- S0: Welcome -->
+        <div class="scene active" id="sc0" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 28px;gap:0;">
+            <svg viewBox="0 0 52 52" fill="none" style="width:52px;height:52px;margin-bottom:16px;animation:breathe 3s ease-in-out infinite;">
+                <circle cx="26" cy="26" r="23" stroke="rgba(201,168,76,.3)" stroke-width=".8"/>
+                <ellipse cx="26" cy="26" rx="8.5" ry="23" stroke="rgba(201,168,76,.25)" stroke-width=".8"/>
+                <line x1="3" y1="26" x2="49" y2="26" stroke="rgba(201,168,76,.22)" stroke-width=".8"/>
+                <path d="M6 17 Q26 11 46 17" stroke="rgba(201,168,76,.6)" stroke-width="1" fill="none"/>
+                <path d="M5 26 Q26 20 47 26" stroke="rgba(201,168,76,.18)" stroke-width=".6" fill="none"/>
+                <path d="M6 35 Q26 41 46 35" stroke="rgba(201,168,76,.32)" stroke-width=".8" fill="none"/>
+                <circle cx="26" cy="26" r="3.5" fill="rgba(201,168,76,.65)"/>
+                <circle cx="26" cy="26" r="6.5" stroke="rgba(201,168,76,.28)" stroke-width=".5" fill="none"/>
+            </svg>
+            <div style="font-family:'Cormorant SC',serif;font-size:26px;color:var(--cream);letter-spacing:.16em;margin-bottom:5px;">TERRA</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--cream3);margin-bottom:18px;">Проектируй свой сад</div>
+            <div id="s0-hint" style="background:var(--gold4);border:1px solid var(--gold3);border-radius:8px;padding:10px 16px;margin-bottom:16px;max-width:340px;">
+                <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--gold);margin-bottom:3px;">🔊 Включите звук</div>
+                <div style="font-size:11px;color:var(--cream3);line-height:1.6;">Нажмите кнопку <em style="color:var(--cream2);">«Звук выкл.»</em> выше — и тур оживёт: звуки природы, акценты на каждое действие</div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--cream4);"><div style="width:4px;height:4px;border-radius:50%;background:var(--gold);"></div>Загрузка участка</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--cream4);"><div style="width:4px;height:4px;border-radius:50%;background:var(--gold);"></div>AI за 10 секунд</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--cream4);"><div style="width:4px;height:4px;border-radius:50%;background:var(--gold);"></div>Подбор растений</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--cream4);"><div style="width:4px;height:4px;border-radius:50%;background:var(--gold);"></div>Смета и экспорт</div>
+            </div>
+        </div>
+
+        <!-- S1: Upload + AI -->
+        <div class="scene" id="sc1" style="height:100%;">
+            <div class="ui-topbar">
+                <svg viewBox="0 0 22 22" fill="none" style="width:16px;height:16px;"><circle cx="11" cy="11" r="9" stroke="rgba(201,168,76,.4)" stroke-width=".8"/><ellipse cx="11" cy="11" rx="4" ry="9" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><line x1="2" y1="11" x2="20" y2="11" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><path d="M3 7 Q11 5 19 7" stroke="rgba(201,168,76,.6)" stroke-width=".9" fill="none"/><circle cx="11" cy="11" r="1.8" fill="rgba(201,168,76,.6)"/></svg>
+                <span class="ui-logo">TERRA · <em>AI-генерация</em></span>
+                <div class="uiml"><div class="ui-btn ui-btn-g">Редактор</div></div>
+            </div>
+            <div style="padding:14px 16px;">
+                <div id="s1-upload" style="border:1.5px dashed rgba(201,168,76,.22);border-radius:9px;padding:22px 16px;text-align:center;background:var(--gold4);position:relative;overflow:hidden;margin-bottom:12px;">
+                    <div class="shimmer"></div>
+                    <div style="font-size:22px;margin-bottom:6px;">📸</div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--cream2);margin-bottom:2px;">Перетащите фото участка</div>
+                    <div style="font-size:10px;color:var(--cream4);">JPG, PNG · несколько ракурсов</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+                    <div style="background:var(--ink3);border:1px solid var(--border);border-radius:5px;padding:7px 9px;"><div style="font-size:9px;color:var(--cream4);margin-bottom:2px;">Стиль</div><div style="font-size:10px;color:var(--cream2);">Природный</div></div>
+                    <div style="background:var(--ink3);border:1px solid var(--border);border-radius:5px;padding:7px 9px;"><div style="font-size:9px;color:var(--cream4);margin-bottom:2px;">Бюджет</div><div style="font-size:10px;color:var(--cream2);">300 000 ₽</div></div>
+                    <div style="background:var(--ink3);border:1px solid var(--border);border-radius:5px;padding:7px 9px;"><div style="font-size:9px;color:var(--cream4);margin-bottom:2px;">Климат</div><div style="font-size:10px;color:var(--cream2);">Зона 4</div></div>
+                </div>
+                <div id="s1-prog-wrap" style="display:none;">
+                    <div id="s1-status" style="font-size:10px;color:var(--cream3);margin-bottom:5px;font-family:'Cormorant Garamond',serif;font-style:italic;">Анализируем фото…</div>
+                    <div style="height:2px;background:var(--ink4);border-radius:1px;overflow:hidden;"><div id="s1-bar" style="height:100%;background:var(--gold);border-radius:1px;width:0%;transition:width .5s ease;"></div></div>
+                </div>
+                <div id="s1-variants" style="display:none;margin-top:10px;">
+                    <div style="font-size:8px;color:var(--cream4);margin-bottom:6px;font-family:'Cormorant SC',serif;letter-spacing:.14em;">ВАРИАНТЫ</div>
+                    <div style="display:flex;gap:7px;">
+                        <div style="flex:1;border:1.5px solid var(--gold2);border-radius:5px;overflow:hidden;cursor:pointer;">
+                            <div style="height:42px;background:var(--ink3);display:flex;align-items:center;justify-content:center;font-size:18px;">🌿</div>
+                            <div style="padding:4px 6px;font-size:9px;text-align:center;color:var(--gold);">Природный</div>
+                        </div>
+                        <div style="flex:1;border:1px solid var(--border);border-radius:5px;overflow:hidden;cursor:pointer;">
+                            <div style="height:42px;background:var(--ink3);display:flex;align-items:center;justify-content:center;font-size:18px;">🌺</div>
+                            <div style="padding:4px 6px;font-size:9px;text-align:center;color:var(--cream3);">Цветочный</div>
+                        </div>
+                        <div style="flex:1;border:1px solid var(--border);border-radius:5px;overflow:hidden;cursor:pointer;">
+                            <div style="height:42px;background:var(--ink3);display:flex;align-items:center;justify-content:center;font-size:18px;">🪨</div>
+                            <div style="padding:4px 6px;font-size:9px;text-align:center;color:var(--cream3);">Минимализм</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="c1" class="cursor-el" style="left:100px;top:140px;"><svg viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l4 11 2-4 4-2z" fill="rgba(201,168,76,.9)" stroke="rgba(201,168,76,.4)" stroke-width=".5"/></svg></div>
+            <div id="r1" class="click-ring-el" style="left:100px;top:140px;"></div>
+        </div>
+
+        <!-- S2: Editor + plants -->
+        <div class="scene" id="sc2" style="height:100%;position:relative;">
+            <div class="ui-topbar">
+                <svg viewBox="0 0 22 22" fill="none" style="width:16px;height:16px;"><circle cx="11" cy="11" r="9" stroke="rgba(201,168,76,.4)" stroke-width=".8"/><ellipse cx="11" cy="11" rx="4" ry="9" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><line x1="2" y1="11" x2="20" y2="11" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><path d="M3 7 Q11 5 19 7" stroke="rgba(201,168,76,.6)" stroke-width=".9" fill="none"/><circle cx="11" cy="11" r="1.8" fill="rgba(201,168,76,.6)"/></svg>
+                <span class="ui-logo">TERRA · <em>Редактор</em></span>
+                <div class="uiml"><div class="ui-btn ui-btn-g">✦ Авто-план</div></div>
+            </div>
+            <div style="display:flex;height:calc(100% - 36px);">
+                <div style="width:130px;border-right:1px solid var(--border);background:var(--ink2);padding:7px;overflow:hidden;">
+                    <div style="font-family:'Cormorant SC',serif;font-size:7px;letter-spacing:.16em;color:var(--cream4);margin-bottom:6px;">КАТАЛОГ</div>
+                    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:4px;background:var(--ink3);border:1px solid var(--border);margin-bottom:3px;cursor:grab;"><span style="font-size:12px;">🌳</span><div><div style="font-size:9px;color:var(--cream2);">Берёза</div><div style="font-size:7px;color:var(--cream4);font-style:italic;">Betula pendula</div></div></div>
+                    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:4px;margin-bottom:3px;cursor:grab;"><span style="font-size:12px;">🌲</span><div><div style="font-size:9px;color:var(--cream2);">Ель</div><div style="font-size:7px;color:var(--cream4);font-style:italic;">Picea abies</div></div></div>
+                    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:4px;margin-bottom:3px;cursor:grab;"><span style="font-size:12px;">🌸</span><div><div style="font-size:9px;color:var(--cream2);">Сирень</div></div></div>
+                    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:4px;margin-bottom:3px;cursor:grab;"><span style="font-size:12px;">🌹</span><div><div style="font-size:9px;color:var(--cream2);">Роза</div></div></div>
+                    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:4px;cursor:grab;"><span style="font-size:12px;">⛲</span><div><div style="font-size:9px;color:var(--cream2);">Беседка</div></div></div>
+                </div>
+                <div style="flex:1;position:relative;overflow:hidden;">
+                    <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(201,168,76,.05) 1px,transparent 1px);background-size:16px 16px;"></div>
+                    <div class="plot-mini" style="left:28px;top:18px;width:290px;height:220px;">
+                        <div style="position:absolute;top:-13px;left:0;font-size:7px;font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--sage);">Участок · 8 соток</div>
+                        <div class="zone-m" style="left:5px;top:5px;width:54%;height:46%;background:rgba(107,143,106,.05);border:1px dashed rgba(107,143,106,.14);color:rgba(107,143,106,.28);">Газон</div>
+                        <div class="zone-m" style="right:5px;top:5px;width:37%;height:35%;background:rgba(201,168,76,.04);border:1px dashed rgba(201,168,76,.1);color:rgba(201,168,76,.22);">Отдых</div>
+                        <div class="zone-m" style="left:5px;bottom:5px;width:42%;height:35%;background:rgba(160,120,60,.04);border:1px dashed rgba(160,120,60,.1);color:rgba(160,120,60,.22);">Огород</div>
+                        <div style="position:absolute;right:8px;bottom:8px;width:48px;height:40px;background:var(--ink3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:16px;">🏠</div>
+                        <div class="plant-chip" id="p0" style="left:55px;top:55px;opacity:0;"><span>🌳</span><div class="plant-lbl">Берёза</div></div>
+                        <div class="plant-chip" id="p1" style="left:105px;top:44px;opacity:0;"><span>🌲</span><div class="plant-lbl">Ель</div></div>
+                        <div class="plant-chip" id="p2" style="left:80px;top:120px;opacity:0;"><span>🌸</span><div class="plant-lbl">Сирень</div></div>
+                        <div class="plant-chip" id="p3" style="left:160px;top:88px;opacity:0;"><span>🌹</span><div class="plant-lbl">Роза</div></div>
+                        <div class="plant-chip" id="p4" style="left:235px;top:158px;opacity:0;"><span>⛲</span><div class="plant-lbl">Беседка</div></div>
+                    </div>
+                    <div id="c2" class="cursor-el" style="left:26px;top:62px;"><svg viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l4 11 2-4 4-2z" fill="rgba(201,168,76,.9)" stroke="rgba(201,168,76,.4)" stroke-width=".5"/></svg></div>
+                    <div id="tt2" class="tooltip-b" style="left:150px;top:30px;display:none;">Перетащите на участок</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- S3: Properties + conflict -->
+        <div class="scene" id="sc3" style="height:100%;">
+            <div class="ui-topbar">
+                <svg viewBox="0 0 22 22" fill="none" style="width:16px;height:16px;"><circle cx="11" cy="11" r="9" stroke="rgba(201,168,76,.4)" stroke-width=".8"/><ellipse cx="11" cy="11" rx="4" ry="9" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><line x1="2" y1="11" x2="20" y2="11" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><path d="M3 7 Q11 5 19 7" stroke="rgba(201,168,76,.6)" stroke-width=".9" fill="none"/><circle cx="11" cy="11" r="1.8" fill="rgba(201,168,76,.6)"/></svg>
+                <span class="ui-logo">TERRA · <em>Свойства</em></span>
+            </div>
+            <div style="display:flex;height:calc(100% - 36px);">
+                <div style="flex:1;position:relative;overflow:hidden;">
+                    <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(201,168,76,.05) 1px,transparent 1px);background-size:16px 16px;"></div>
+                    <div class="plot-mini" style="left:18px;top:16px;width:240px;height:190px;">
+                        <div class="plant-chip" style="left:55px;top:50px;box-shadow:0 0 0 2px var(--gold);"><span>🌳</span><div class="plant-lbl">Берёза</div></div>
+                        <div class="plant-chip" style="left:108px;top:40px;"><span>🌲</span><div class="plant-lbl">Ель</div></div>
+                        <div id="cf-plant" class="plant-chip" style="left:80px;top:118px;"><span>🌿</span><div class="plant-lbl">Папоротник</div></div>
+                        <div class="plant-chip" style="left:165px;top:82px;"><span>🌹</span><div class="plant-lbl">Роза</div></div>
+                        <div style="position:absolute;right:8px;bottom:8px;width:42px;height:34px;background:var(--ink3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:13px;">🏠</div>
+                        <div class="h-ring" id="hring" style="left:37px;top:33px;width:34px;height:34px;"></div>
+                    </div>
+                    <div id="cf-badge" style="position:absolute;left:18px;top:226px;display:none;animation:fadeIn .35s ease both;">
+                        <div style="display:flex;align-items:center;gap:5px;background:rgba(192,96,80,.1);border:1px solid rgba(192,96,80,.28);border-radius:5px;padding:5px 9px;font-size:9px;color:#e09080;">
+                            ⚠ Берёза + Папоротник несовместимы
+                        </div>
+                    </div>
+                    <div id="c3" class="cursor-el" style="left:70px;top:66px;"><svg viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l4 11 2-4 4-2z" fill="rgba(201,168,76,.9)" stroke="rgba(201,168,76,.4)" stroke-width=".5"/></svg></div>
+                </div>
+                <div style="width:178px;border-left:1px solid var(--border);background:var(--ink2);padding:10px;overflow-y:auto;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--cream);margin-bottom:2px;">Берёза повислая</div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:9px;color:var(--cream4);margin-bottom:8px;">Betula pendula</div>
+                    <div class="pr"><span class="pk">Высота</span><span class="pv">до 20 м</span></div>
+                    <div class="pr"><span class="pk">Освещение</span><span class="pv">Солнце</span></div>
+                    <div class="pr"><span class="pk">Полив</span><span class="pv">Умеренный</span></div>
+                    <div class="pr"><span class="pk">Зона USDA</span><span class="pv">3–6</span></div>
+                    <div class="pr"><span class="pk">Цена</span><span class="pv" style="color:var(--gold);">2 800 ₽</span></div>
+                    <div id="al-ok" class="al al-g" style="margin-top:6px;">✓ Совместима</div>
+                    <div id="al-err" class="al al-r" style="display:none;margin-top:6px;">⚠ Конфликт с Папоротником</div>
+                    <div class="al al-a" style="margin-top:5px;">Зона 3–6</div>
+                    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:9px;color:var(--cream3);font-family:'Cormorant Garamond',serif;font-style:italic;line-height:1.6;">Радиус корней 3м. Не сажать рядом с папоротником.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- S4: Estimate -->
+        <div class="scene" id="sc4" style="height:100%;overflow:hidden;">
+            <div class="ui-topbar">
+                <svg viewBox="0 0 22 22" fill="none" style="width:16px;height:16px;"><circle cx="11" cy="11" r="9" stroke="rgba(201,168,76,.4)" stroke-width=".8"/><ellipse cx="11" cy="11" rx="4" ry="9" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><line x1="2" y1="11" x2="20" y2="11" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><path d="M3 7 Q11 5 19 7" stroke="rgba(201,168,76,.6)" stroke-width=".9" fill="none"/><circle cx="11" cy="11" r="1.8" fill="rgba(201,168,76,.6)"/></svg>
+                <span class="ui-logo">TERRA · <em>Смета</em></span>
+                <div class="uiml"><div class="ui-btn" style="font-size:8px;padding:2px 7px;">↓ PDF</div><div class="ui-btn" style="font-size:8px;padding:2px 7px;">↓ Excel</div></div>
+            </div>
+            <div style="padding:10px 14px;overflow:hidden;">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:11px;">
+                    <div style="background:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;"><div id="s4-total" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;color:var(--gold);">0 ₽</div><div style="font-size:8px;color:var(--cream4);font-style:italic;font-family:'Cormorant Garamond',serif;">Итого</div></div>
+                    <div style="background:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;"><div id="s4-cnt" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;color:var(--cream);">0</div><div style="font-size:8px;color:var(--cream4);font-style:italic;font-family:'Cormorant Garamond',serif;">Позиций</div></div>
+                    <div style="background:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;"><div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;color:var(--cream);">8 сот.</div><div style="font-size:8px;color:var(--cream4);font-style:italic;font-family:'Cormorant Garamond',serif;">Площадь</div></div>
+                </div>
+                <div style="margin-bottom:10px;" id="s4-bars"></div>
+                <div style="background:var(--ink2);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+                    <table class="spec-tbl"><thead><tr><th>Наименование</th><th style="text-align:center;">Кол</th><th style="text-align:right;">Цена</th><th style="text-align:right;">Сумма</th></tr></thead><tbody id="s4-rows"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- S5: Export done -->
+        <div class="scene" id="sc5" style="height:100%;overflow:hidden;">
+            <div class="ui-topbar">
+                <svg viewBox="0 0 22 22" fill="none" style="width:16px;height:16px;"><circle cx="11" cy="11" r="9" stroke="rgba(201,168,76,.4)" stroke-width=".8"/><ellipse cx="11" cy="11" rx="4" ry="9" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><line x1="2" y1="11" x2="20" y2="11" stroke="rgba(201,168,76,.28)" stroke-width=".8"/><path d="M3 7 Q11 5 19 7" stroke="rgba(201,168,76,.6)" stroke-width=".9" fill="none"/><circle cx="11" cy="11" r="1.8" fill="rgba(201,168,76,.6)"/></svg>
+                <span class="ui-logo">TERRA · <em>Готово</em></span>
+            </div>
+            <div style="padding:14px 18px;display:flex;flex-direction:column;gap:9px;">
+                <div style="text-align:center;padding:6px 0 10px;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:var(--cream);">Проект <em style="color:var(--gold);">готов</em></div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:11px;color:var(--cream3);margin-top:2px;">9 объектов · 8 соток · Подмосковье</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+                    <div id="ec0" style="background:var(--ink2);border:1px solid var(--gold3);border-radius:7px;padding:11px;cursor:pointer;"><div style="font-size:16px;margin-bottom:5px;">📄</div><div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:var(--cream);margin-bottom:2px;">PDF-отчёт</div><div style="font-size:9px;color:var(--cream4);">План + смета + советы</div><div id="ck0" style="display:none;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:rgba(107,143,106,.2);border:1px solid var(--sage2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;animation:checkPop .4s ease both;">✓</div></div></div>
+                    <div id="ec1" style="background:var(--ink2);border:1px solid var(--border);border-radius:7px;padding:11px;cursor:pointer;"><div style="font-size:16px;margin-bottom:5px;">📊</div><div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:var(--cream);margin-bottom:2px;">Excel-смета</div><div style="font-size:9px;color:var(--cream4);">Для подрядчика</div><div id="ck1" style="display:none;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:rgba(107,143,106,.2);border:1px solid var(--sage2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;animation:checkPop .4s ease both;">✓</div></div></div>
+                    <div id="ec2" style="background:var(--ink2);border:1px solid var(--border);border-radius:7px;padding:11px;cursor:pointer;"><div style="font-size:16px;margin-bottom:5px;">🔗</div><div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:var(--cream);margin-bottom:2px;">Ссылка</div><div style="font-size:9px;color:var(--cream4);">Поделиться</div><div id="ck2" style="display:none;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:rgba(107,143,106,.2);border:1px solid var(--sage2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;animation:checkPop .4s ease both;">✓</div></div></div>
+                    <div id="ec3" style="background:var(--ink2);border:1px solid var(--border);border-radius:7px;padding:11px;cursor:pointer;"><div style="font-size:16px;margin-bottom:5px;">🖼️</div><div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:var(--cream);margin-bottom:2px;">PNG план</div><div style="font-size:9px;color:var(--cream4);">Для соцсетей</div><div id="ck3" style="display:none;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:rgba(107,143,106,.2);border:1px solid var(--sage2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;animation:checkPop .4s ease both;">✓</div></div></div>
+                </div>
+                <div style="background:var(--gold4);border:1px solid var(--gold3);border-radius:7px;padding:10px 14px;text-align:center;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:12px;font-style:italic;color:var(--cream2);line-height:1.7;margin-bottom:8px;">Попробуйте сами — это проще, чем кажется</div>
+                    <button id="startProjectBtn" style="padding:6px 16px;border-radius:5px;border:1px solid var(--gold2);background:var(--gold4);color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:12px;cursor:pointer;">Начать свой проект ↗</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="controls-bar">
+        <button class="cbtn" id="btn-prev">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2L4 6L8 10"/></svg>
+            Назад
+        </button>
+        <div style="flex:1;text-align:center;">
+            <div class="cstep" id="cstep">1 / 6</div>
+            <div class="cauto"><div class="adot"></div><span>авто</span></div>
+        </div>
+        <button class="cbtn primary" id="btn-next">
+            Далее
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 2L8 6L4 10"/></svg>
+        </button>
+    </div>
+
+    <div class="caption">
+        <div class="cap-step" id="cap-step"></div>
+        <div class="cap-title" id="cap-title">Добро пожаловать в TERRA</div>
+        <div class="cap-body" id="cap-body">Включите звук выше и нажмите «Далее» — тур покажет все возможности приложения с живыми звуками природы.</div>
+    </div>
+
+</div>
+
+<script>
+    // ------------------- ПОЛНОСТЬЮ РАБОЧАЯ ВЕРСИЯ -------------------
+    (function() {
+        // Звуковой движок (упрощённо, но работоспособно)
+        let AC = null;
+        let masterGain = null;
+        let audioOn = false;
+        let vol = 0.6;
+
+        function getAC() {
+            if (!AC) {
+                try {
+                    AC = new (window.AudioContext || window.webkitAudioContext)();
+                    masterGain = AC.createGain();
+                    masterGain.gain.value = vol;
+                    masterGain.connect(AC.destination);
+                } catch(e) { console.warn(e); }
+            }
+            if (AC && AC.state === 'suspended') AC.resume();
+            return AC;
+        }
+
+        function playChime(freq=523, amp=0.12, dur=0.8) {
+            const ac = getAC();
+            if (!ac || !audioOn) return;
+            const o = ac.createOscillator();
+            const g = ac.createGain();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            const t = ac.currentTime;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(amp, t+0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+            o.connect(g);
+            g.connect(masterGain);
+            o.start(t);
+            o.stop(t+dur);
+        }
+
+        function playClick() { playChime(800, 0.07, 0.1); }
+        function playTransition() { playChime(660, 0.09, 0.4); }
+        function playSuccess() { [523, 659, 784].forEach((f,i)=>setTimeout(()=>playChime(f,0.1,0.6), i*100)); }
+        
+        // Данные сцен
+        const SCENES_DATA = [
+            { lbl: 'Добро пожаловать', step: '', title: 'Добро пожаловать в TERRA', body: 'Включите звук выше и нажмите «Далее» — тур покажет все возможности.' },
+            { lbl: 'Загрузка фото', step: 'ШАГ 1 ИЗ 5', title: 'Загрузите фото участка', body: 'AI сам определит размеры, тип почвы и освещённость.' },
+            { lbl: 'Редактор', step: 'ШАГ 2 ИЗ 5', title: 'Перетащите растения на план', body: 'Из каталога — прямо на участок. Каждое растение звучит при посадке.' },
+            { lbl: 'Свойства', step: 'ШАГ 3 ИЗ 5', title: 'Нажмите и узнайте всё о растении', body: 'Terra предупредит, если растения несовместимы.' },
+            { lbl: 'Смета', step: 'ШАГ 4 ИЗ 5', title: 'Смета считается автоматически', body: 'Региональные цены. Скачайте PDF или Excel.' },
+            { lbl: 'Готово', step: 'ШАГ 5 ИЗ 5', title: 'Проект готов — делитесь!', body: 'PDF, Excel, ссылка или PNG — всё для разговора с подрядчиком.' }
+        ];
+
+        let cur = 0;
+        let autoTimer = null;
+
+        // Элементы
+        const scenes = [document.getElementById('sc0'), document.getElementById('sc1'), document.getElementById('sc2'), document.getElementById('sc3'), document.getElementById('sc4'), document.getElementById('sc5')];
+        const prevBtn = document.getElementById('btn-prev');
+        const nextBtn = document.getElementById('btn-next');
+        const progFill = document.getElementById('prog');
+        const stepSpan = document.getElementById('cstep');
+        const slbl = document.getElementById('slbl');
+        const capStep = document.getElementById('cap-step');
+        const capTitle = document.getElementById('cap-title');
+        const capBody = document.getElementById('cap-body');
+        const sdotsContainer = document.getElementById('sdots');
+
+        function updateUI() {
+            const data = SCENES_DATA[cur];
+            if (slbl) slbl.textContent = data.lbl;
+            if (capStep) capStep.textContent = data.step;
+            if (capTitle) capTitle.textContent = data.title;
+            if (capBody) capBody.textContent = data.body;
+            if (stepSpan) stepSpan.textContent = (cur+1)+' / '+SCENES_DATA.length;
+            if (progFill) progFill.style.width = ((cur/(SCENES_DATA.length-1))*100)+'%';
+            if (prevBtn) prevBtn.style.opacity = cur===0 ? '0.3' : '1';
+            if (nextBtn) {
+                if (cur === SCENES_DATA.length-1) nextBtn.innerHTML = 'Заново <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="width:12px;height:12px;"><path d="M6 2a4 4 0 110 8 4 4 0 010-8M10 2v3H7"/></svg>';
+                else nextBtn.innerHTML = 'Далее <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="width:12px;height:12px;"><path d="M4 2L8 6L4 10"/></svg>';
+            }
+            // Обновить точки
+            if (sdotsContainer) {
+                const dots = sdotsContainer.querySelectorAll('.sdot');
+                dots.forEach((d, i) => {
+                    d.classList.remove('active', 'done');
+                    if (i < cur) d.classList.add('done');
+                    else if (i === cur) d.classList.add('active');
+                });
+            }
+        }
+
+        function goTo(index) {
+            if (index < 0) index = 0;
+            if (index >= SCENES_DATA.length) index = SCENES_DATA.length - 1;
+            if (cur === index) return;
+            // Скрыть все сцены
+            scenes.forEach(scene => { if (scene) scene.classList.remove('active'); });
+            cur = index;
+            if (scenes[cur]) scenes[cur].classList.add('active');
+            updateUI();
+            // Сброс таймера авто-переключения
+            if (autoTimer) clearTimeout(autoTimer);
+            autoTimer = setTimeout(() => { goTo((cur+1) % SCENES_DATA.length); }, 5600);
+            // Воспроизвести звук перехода
+            playTransition();
+            // Запустить анимации для сцены (упрощённые, но для демонстрации)
+            if (cur === 1) {
+                // Простая имитация загрузки для сцены 1
+                const pw = document.getElementById('s1-prog-wrap');
+                const va = document.getElementById('s1-variants');
+                if (pw) pw.style.display = 'block';
+                if (va) setTimeout(() => { if(va) va.style.display = 'block'; playSuccess(); }, 1500);
+            }
+            if (cur === 2) {
+                // Показать растения
+                for(let i=0;i<=4;i++) {
+                    const p = document.getElementById('p'+i);
+                    if(p) setTimeout(() => { p.style.opacity='1'; p.style.animation='plantDrop .45s ease both'; }, i*400);
+                }
+            }
+            if (cur === 3) {
+                setTimeout(() => {
+                    const cf = document.getElementById('cf-badge');
+                    const ale = document.getElementById('al-err');
+                    const alo = document.getElementById('al-ok');
+                    if (cf) cf.style.display = 'block';
+                    if (alo) alo.style.display = 'none';
+                    if (ale) ale.style.display = 'block';
+                    playChime(220,0.1,0.5);
+                }, 1000);
+            }
+            if (cur === 4) {
+                const bars = document.getElementById('s4-bars');
+                const rows = document.getElementById('s4-rows');
+                const totalSpan = document.getElementById('s4-total');
+                const cntSpan = document.getElementById('s4-cnt');
+                if (bars && rows) {
+                    bars.innerHTML = '<div>Растения 40%</div><div>МАФ 55%</div><div>Работы 62%</div>';
+                    const items = [{n:'Берёза',q:2,p:2800},{n:'Ель',q:1,p:3200},{n:'Сирень',q:3,p:650},{n:'Роза',q:5,p:850},{n:'Беседка',q:1,p:38000}];
+                    let total=0;
+                    rows.innerHTML = '';
+                    items.forEach((it,i)=>{
+                        const s=it.q*it.p;
+                        total+=s;
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${it.n}</td><td style="text-align:center">${it.q}</td><td style="text-align:right">${it.p} ₽</td><td style="text-align:right">${s} ₽</td>`;
+                        rows.appendChild(tr);
+                        if(totalSpan) totalSpan.textContent = total.toLocaleString('ru')+' ₽';
+                        if(cntSpan) cntSpan.textContent = i+1;
+                    });
+                }
+            }
+            if (cur === 5) {
+                for(let i=0;i<4;i++) {
+                    const ck = document.getElementById('ck'+i);
+                    if(ck) setTimeout(()=>{ck.style.display='block';}, i*300);
+                }
+                playSuccess();
+            }
+        }
+
+        function next() { goTo((cur+1) % SCENES_DATA.length); }
+        function prev() { if (cur>0) goTo(cur-1); }
+
+        // Построить точки навигации
+        function buildDots() {
+            if (!sdotsContainer) return;
+            sdotsContainer.innerHTML = '';
+            for (let i=0; i<SCENES_DATA.length; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'sdot' + (i===0 ? ' active' : '');
+                dot.addEventListener('click', () => goTo(i));
+                sdotsContainer.appendChild(dot);
+            }
+        }
+
+        // Обработчики для аудио
+        function toggleAudio() {
+            audioOn = !audioOn;
+            const btn = document.getElementById('audio-toggle');
+            const lbl = document.getElementById('audio-lbl');
+            const waves = document.querySelectorAll('.wbar');
+            if (audioOn) {
+                getAC();
+                if(btn) { btn.classList.add('on'); btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 5H5L9 2v10L5 9H2V5z"/><path d="M10.5 4.5a3 3 0 010 5M11.8 3a5 5 0 010 8" opacity=".6"/></svg>Звук вкл.'; }
+                if(lbl) lbl.textContent = 'Атмосфера леса · тональные акценты';
+                waves.forEach(w => w.classList.add('playing'));
+                playChime(440,0.15,0.8);
+                // Простой фоновый звук (имитация)
+                if (AC) {
+                    const osc = AC.createOscillator();
+                    const gain = AC.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = 120;
+                    gain.gain.value = 0.03;
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    osc.start();
+                    osc.stop(AC.currentTime+60);
+                }
+            } else {
+                if(btn) { btn.classList.remove('on'); btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 5H5L9 2v10L5 9H2V5z"/><path d="M11 5l2 2-2 2M11 5l2 2-2 2" opacity=".5"/></svg>Звук выкл.'; }
+                if(lbl) lbl.textContent = 'Нажмите для включения звука';
+                waves.forEach(w => w.classList.remove('playing'));
+            }
+        }
+
+        function setVolume(val) {
+            vol = val/100;
+            if (masterGain && AC) masterGain.gain.setTargetAtTime(vol, AC.currentTime, 0.05);
+        }
+
+        // Инициализация
+        buildDots();
+        updateUI();
+        if (prevBtn) prevBtn.addEventListener('click', prev);
+        if (nextBtn) nextBtn.addEventListener('click', next);
+        const audioToggle = document.getElementById('audio-toggle');
+        if (audioToggle) audioToggle.addEventListener('click', toggleAudio);
+        const volSlider = document.getElementById('vol-slider');
+        if (volSlider) volSlider.addEventListener('input', (e) => setVolume(e.target.value));
+        const startBtn = document.getElementById('startProjectBtn');
+        if (startBtn) startBtn.addEventListener('click', () => { alert('Здесь будет запуск нового проекта'); playSuccess(); });
+        // Экспортные кнопки
+        document.querySelectorAll('#ec0, #ec1, #ec2, #ec3').forEach((btn,idx) => {
+            btn.addEventListener('click', () => { playChime(523+idx*100,0.12,0.5); alert('Экспорт (демо)'); });
+        });
+        // Авто-переключение
+        autoTimer = setTimeout(() => { goTo(1); }, 5600);
+        // Создание аудиоконтекста по клику
+        document.body.addEventListener('click', function initAudio() { getAC(); document.body.removeEventListener('click', initAudio); }, { once: true });
+    })();
+</script>
+</body>
+</html>
